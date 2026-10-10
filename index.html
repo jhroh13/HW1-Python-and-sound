@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f7f6f2" />
+    <meta name="description" content="음원을 업로드하고, 듣고, 파형으로 살펴보세요. 파일은 브라우저 안에서만 처리됩니다." />
+    <title>WAVE — 나만의 오디오 스튜디오</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='12' fill='%23ed5c36'/%3E%3Cpath d='M10 17v6m7-13v20m7-16v12m7-9v6' stroke='white' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="site-header">
+        <a class="brand" href="./" aria-label="WAVE 홈"><span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>WAVE<span class="brand-caption">audio studio</span></a>
+        <span class="privacy-badge"><span class="status-dot"></span>내 브라우저 안의 스튜디오</span>
+      </header>
+      <main>
+        <section class="intro" aria-labelledby="page-title">
+          <div><p class="eyebrow">LISTEN. SEE. FEEL.</p><h1 id="page-title">소리를 듣고,<br />파형으로 <span>발견하세요.</span></h1><p class="intro-copy">당신의 음원을 조금 더 가까이.<br class="mobile-break" /> 업로드부터 재생까지, 한곳에서.</p></div>
+          <div class="hero-art" aria-hidden="true"><div class="orbit"></div><div class="art-wave"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div><span>SOUND, IN SIGHT.</span></div>
+        </section>
+        <div class="studio-grid">
+          <section class="upload-panel" aria-labelledby="upload-title">
+            <div class="panel-heading"><span class="section-number">01</span><h2 id="upload-title">음원 가져오기</h2></div>
+            <div class="drop-zone" id="drop-zone">
+              <div class="upload-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 16V4m-5 5 5-5 5 5M4 16v4h16v-4" /></svg></div>
+              <p class="drop-title">여기에 음원을 놓아주세요</p><p class="drop-hint">또는 내 기기에서 파일을 선택하세요</p>
+              <button class="upload-button" id="choose-file" type="button">파일 선택 <span aria-hidden="true">↗</span></button>
+              <input id="file-input" type="file" accept="audio/*,.mp3,.wav,.ogg,.m4a,.aac,.flac,.webm" hidden />
+              <p class="formats">MP3, WAV, OGG, M4A 등 · 최대 100 MB</p>
+            </div>
+            <div class="demo-row"><div><p>음원이 없어도 괜찮아요</p><span>짧은 멜로디로 먼저 둘러보세요.</span></div><button id="load-demo" class="demo-button" type="button" aria-label="샘플 음원 불러오기">샘플 듣기 <span aria-hidden="true">→</span></button></div>
+            <p class="local-note"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M7 10V7a5 5 0 0 1 10 0v3M5 10h14v11H5z" /></svg>선택한 파일은 서버에 전송되지 않습니다.</p>
+          </section>
+          <section class="player-panel" aria-labelledby="player-title">
+            <div class="panel-heading"><span class="section-number">02</span><h2 id="player-title">듣고 살펴보기</h2><span id="state-badge" class="state-badge">준비됨</span></div>
+            <div class="track-header"><div class="track-art" aria-hidden="true">♫</div><div class="track-description"><h3 id="track-name">어떤 소리를 들려주실 건가요?</h3><p id="track-details">음원을 가져오면 파형이 여기에 나타납니다.</p></div></div>
+            <div class="waveform-container" id="waveform-container"><canvas id="waveform" role="slider" tabindex="0" aria-label="파형 재생 위치" aria-valuemin="0" aria-valuemax="0" aria-valuenow="0" aria-valuetext="음원을 먼저 선택하세요" aria-disabled="true"></canvas><div class="empty-wave" id="empty-wave"><span>YOUR SOUND GOES HERE</span><p>소리의 모양을 만나보세요</p></div><div class="wave-time" aria-hidden="true"><span>0:00</span><span id="wave-mid">—</span><span id="wave-end">—</span></div></div>
+            <p class="wave-tip" id="wave-tip">파형을 클릭하거나 방향키로 재생 위치를 이동할 수 있어요.</p>
+            <div class="transport"><div class="playback-buttons"><button class="icon-button" id="rewind" aria-label="5초 뒤로" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 5-7 7 7 7V5Zm11 0-7 7 7 7V5Z" /></svg></button><button class="play-button" id="play" aria-label="재생" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 4 13 8-13 8Z" /></svg></button><button class="icon-button" id="forward" aria-label="5초 앞으로" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m3 5 7 7-7 7V5Zm11 0 7 7-7 7V5Z" /></svg></button></div><div class="time-display"><span id="current-time">0:00</span><span class="time-divider">/</span><span id="duration">0:00</span></div><div class="volume-control"><button class="icon-button" id="mute" aria-label="음소거" disabled><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M11 4 6 8H3v8h3l5 4V4Zm4 4a6 6 0 0 1 0 8m3-11a10 10 0 0 1 0 14" /></svg></button><input id="volume" aria-label="음량" type="range" min="0" max="1" step="0.01" value="0.75" disabled /></div></div>
+            <div class="player-bottom"><span id="player-note">나만의 작은 리스닝 룸</span><span class="keyboard-note">SPACE <span>재생 / 일시정지</span></span></div>
+          </section>
+        </div>
+        <p id="message" class="message" role="status" aria-live="polite"></p>
+        <section class="guide" aria-label="사용 안내"><div><span class="guide-icon">↗</span><div><h3>가볍게 가져오고</h3><p>파일 선택 또는 드래그 앤 드롭</p></div></div><div><span class="guide-icon">▷</span><div><h3>자유롭게 들어보세요</h3><p>원하는 구간으로 바로 이동</p></div></div><div><span class="guide-icon">∿</span><div><h3>소리를 눈으로 만나세요</h3><p>실제 음원에서 그린 파형</p></div></div></section>
+      </main>
+      <footer><span>WAVE <span class="footer-caption">A little space for your sound.</span></span><span>Made for listening.</span></footer>
+    </div>
+    <audio id="audio" preload="auto"></audio>
+    <script type="module" src="/src/main.js"></script>
+  </body>
+</html>
