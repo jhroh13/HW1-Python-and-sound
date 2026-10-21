@@ -1,4 +1,6 @@
-# Android 빌드·실기기 검증 (아직 미실행)
+# Android 빌드·실기기 검증
+
+1번 SDK 빌드/Lint는 GitHub Actions 실행 39599522329에서 통과했습니다. 아래 실기기 테스트는 아직 미실행입니다.
 
 1. JDK 17/Gradle 8.9/SDK 35에서 assembleDebug와 lintDebug 통과 확인.
 2. Android 8, 12, 14, 15 기기 또는 에뮬레이터에 설치. Android 15 화면 인셋/버튼 접근 확인.

@@ -2,7 +2,7 @@
 
 Android SDK로 구현한 **네이티브 앱 개발 프로젝트**입니다. WebView, 웹 프런트엔드, HTTPS 실행 서버, Node.js를 사용하지 않습니다. 기존 웹 프로토타입을 실행하는 래퍼가 아니라 UI, 녹음, 해독, 분석, 재생, 파일 생성을 Java로 옮겼습니다.
 
-현재 소스 구현과 로컬 코어 테스트를 완료했습니다. 이 실행 환경에는 Android SDK/Gradle이 없고 SDK 다운로드도 완료되지 않아 **APK 빌드, Android Lint, 에뮬레이터·실기기 검증은 아직 완료되지 않았습니다.** 아래 GitHub Actions는 설정 파일이며, GitHub에 업로드하기 전에는 실행되지 않습니다.
+GitHub Actions에서 **APK 빌드, Android Lint, 코어 테스트 및 APK v2 서명 검증을 완료했습니다.** 실기기·에뮬레이터 실행은 아직 검증하지 못했습니다. [검증 빌드](https://github.com/jhroh13/HW1-Python-and-sound/actions/runs/39599522329)와 [빌드 기록](BUILD_STATUS.md)을 확인하세요.
 
 ## 기능
 
@@ -41,7 +41,7 @@ APK 출력: `app/build/outputs/apk/debug/app-debug.apk`.
 
 ## GitHub에서 개발
 
-대상 GitHub 저장소는 아직 지정되지 않았고 원격 업로드/Actions 실행도 하지 않았습니다. 기존 저장소에는 변경하지 않았습니다. 새 저장소를 사용할 경우 `stemnote-android` 이름을 권장합니다.
+GitHub 저장소 `jhroh13/HW1-Python-and-sound`의 `codex/stemnote-android-apk` 브랜치에 `stemnote-android/` 하위 프로젝트로 추가했습니다. 기존 `master` 브랜치와 웹앱은 변경하지 않았습니다. 저장소 루트의 `.github/workflows/android-native.yml`이 해당 하위 프로젝트를 빌드합니다. 이 폴더를 별도 저장소 루트로 옮길 때는 폴더 내부 `.github/workflows/android.yml`을 사용합니다.
 
 이 프로젝트 전체를 GitHub 저장소 루트에 올리면 `.github/workflows/android.yml`이 push / pull request / 수동 실행에서 다음을 수행합니다.
 
@@ -50,7 +50,7 @@ APK 출력: `app/build/outputs/apk/debug/app-debug.apk`.
 3. `:app:assembleDebug :app:lintDebug` 실행
 4. 성공 시 Actions의 **Stemnote-Android-debug** artifact에 APK 업로드
 
-저장소에 올라간 이후에는 기능 브랜치와 PR로 변경을 검토할 수 있습니다. GitHub Actions 결과를 확인하기 전에는 Android 빌드가 통과했다고 간주하지 마세요.
+저장소에 올라간 이후에는 기능 브랜치와 PR로 변경을 검토할 수 있습니다. APK 생성, Lint, 코어 테스트, 서명 검증은 위 실행에서 통과했습니다. 실기기 동작 검증은 별도입니다.
 
 ## 검증
 
