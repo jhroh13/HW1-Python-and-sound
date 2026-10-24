@@ -1,17 +1,17 @@
-name: Android APK
+name: Android native AI APK
 on:
   push:
-    branches: ["codex/stemnote-android-apk"]
-    paths: ["stemnote-android/**", ".github/workflows/android-native.yml"]
   pull_request:
-    paths: ["stemnote-android/**", ".github/workflows/android-native.yml"]
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: stemnote-native-ai-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     defaults:
       run:
         working-directory: stemnote-android
@@ -21,6 +21,10 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+      - uses: actions/cache@v4
+        with:
+          path: ~/.android/debug.keystore
+          key: stemnote-native-debug-keystore-v1
       - uses: android-actions/setup-android@v3
         with:
           packages: platform-tools
@@ -30,18 +34,51 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Test native analysis and file formats
+      - name: Fetch and verify pinned official model
+        run: python3 tools/fetch_model.py
+      - name: Test analysis and exports
         run: bash tests/run.sh
-      - name: Build and check Android application
-        run: gradle --no-daemon :app:assembleDebug :app:lintDebug
-      - name: Verify APK signature and package
+      - name: Build and lint ARM64 application
         run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging app/build/outputs/apk/debug/app-debug.apk
-          sha256sum app/build/outputs/apk/debug/app-debug.apk
+          gradle --no-daemon -PstemnoteAbi=arm64-v8a :app:assembleDebug :app:lintDebug
+          mkdir -p out/apk
+          cp app/build/outputs/apk/debug/app-debug.apk out/apk/Stemnote-Android-AI-arm64.apk
+      - name: Verify signed APK and bundled model
+        run: |
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs out/apk/Stemnote-Android-AI-arm64.apk
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging out/apk/Stemnote-Android-AI-arm64.apk
+          python3 tests/inspect_apk.py out/apk/Stemnote-Android-AI-arm64.apk
+      - name: Enable KVM
+        run: |
+          sudo chmod 666 /dev/kvm
+      - name: Test real TFLite inference and native screen on Android
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 30
+          arch: x86_64
+          profile: pixel_2
+          disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          script: cd "${{ github.workspace }}/stemnote-android" && gradle --no-daemon -PstemnoteAbi=x86_64 :app:connectedDebugAndroidTest
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Stemnote-AI-test-results
+          path: |
+            app/build/reports/androidTests
+            app/build/outputs/androidTest-results
+            app/build/reports/lint-results-debug.html
+          if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
-          name: Stemnote-Android-debug
-          path: stemnote-android/app/build/outputs/apk/debug/app-debug.apk
+          name: Stemnote-Android-AI-arm64
+          path: out/apk/Stemnote-Android-AI-arm64.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Transfer verified APK
+        if: contains(github.event.head_commit.message, '[transfer-apk]')
+        run: |
+          sha256sum out/apk/Stemnote-Android-AI-arm64.apk
+          echo STEMNOTE_AI_APK_BASE64_BEGIN
+          base64 -w 120 out/apk/Stemnote-Android-AI-arm64.apk
+          echo STEMNOTE_AI_APK_BASE64_END

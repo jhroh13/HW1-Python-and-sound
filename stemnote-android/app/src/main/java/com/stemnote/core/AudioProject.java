@@ -5,18 +5,30 @@ import java.util.List;
 
 public final class AudioProject {
     public static final int SAMPLE_RATE=22050, MAX_SECONDS=120;
-    public final String title, source;
+    public final String title, source, analysis;
     public final Channel[] channels;
     public final int length;
     public AudioProject(String title, String source, Channel[] channels) {
-        if(channels.length!=8) throw new IllegalArgumentException("8 channels required");
-        this.title=title; this.source=source; this.channels=channels; this.length=channels[0].audio.length;
+        this(title,source,channels,"주파수 기반 실험적 추정 · 학습 모델 없음");
+    }
+    public AudioProject(String title,String source,Channel[] channels,String analysis) {
+        if(channels.length!=Instrument.COUNT) throw new IllegalArgumentException("Invalid channel count");
+        this.title=title; this.source=source; this.channels=channels;this.analysis=analysis;
+        int max=0;for(Channel channel:channels)max=Math.max(max,channel.audio.length);this.length=max;
     }
     public static final class Channel {
         public final Instrument instrument;
         public final float[] audio;
         public final List<Note> notes=new ArrayList<>();
         public Channel(Instrument instrument, int length) {this.instrument=instrument;audio=new float[length];}
+        public Channel(Instrument instrument,float[] audio) {this.instrument=instrument;this.audio=audio;}
+    }
+    /** Files added as stems share the same zero-time origin. Existing target is replaced. */
+    public static AudioProject replaceTrack(AudioProject previous,AudioProject addition,Instrument target) {
+        Channel[] channels=previous.channels.clone();
+        channels[target.ordinal()]=addition.channels[target.ordinal()];
+        return new AudioProject(previous.title,previous.source+" · 트랙 추가",channels,
+                "사용자가 지정한 악기 트랙 · 0초 정렬 · 자동 악기 분리 없음");
     }
     public static final class Note {
         public final int pitch, velocity;

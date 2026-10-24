@@ -7,3 +7,4 @@ local.properties
 *.keystore
 .DS_Store
 out/
+app/src/main/assets/basic_pitch.tflite

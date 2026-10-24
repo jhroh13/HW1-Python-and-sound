@@ -8,12 +8,30 @@ android {
         applicationId 'com.stemnote.app'
         minSdk 26
         targetSdk 35
-        versionCode 1
-        versionName '2.0.0-native-preview'
+        versionCode 2
+        versionName '2.1.0-ondevice-ai'
+        testInstrumentationRunner 'android.test.InstrumentationTestRunner'
+        ndk { abiFilters(project.findProperty('stemnoteAbi') ?: 'arm64-v8a') }
     }
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
     buildTypes { release { minifyEnabled false } }
+    androidResources { noCompress += 'tflite' }
 }
+
+dependencies { implementation 'org.tensorflow:tensorflow-lite:2.16.1' }
+
+tasks.register('verifyBasicPitchModel') {
+    doLast {
+        def model = file('src/main/assets/basic_pitch.tflite')
+        if (!model.exists()) throw new GradleException('Run python3 tools/fetch_model.py before building.')
+        def bytes = model.bytes
+        def digest = java.security.MessageDigest.getInstance('SHA-1')
+        digest.update("blob ${bytes.length}\u0000".getBytes('UTF-8'))
+        def hash = digest.digest(bytes).encodeHex().toString()
+        if (hash != '85a41befdd036e9b365a052b7c704c6810288b95') throw new GradleException('Basic Pitch model checksum differs.')
+    }
+}
+tasks.named('preBuild').configure { dependsOn 'verifyBasicPitchModel' }

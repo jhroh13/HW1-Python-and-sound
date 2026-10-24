@@ -23,7 +23,7 @@ public final class Exports {
         ByteArrayOutputStream buffer=new ByteArrayOutputStream();DataOutputStream out=new DataOutputStream(buffer);
         out.writeBytes("MThd");out.writeInt(6);out.writeShort(1);out.writeShort(count+1);out.writeShort(480);
         track(out,new byte[]{0,(byte)255,81,3,7,(byte)161,32,0,(byte)255,47,0});
-        for(int id=0;id<8;id++)if(selected[id]) {
+        for(int id=0;id<Instrument.COUNT;id++)if(selected[id]) {
             AudioProject.Channel channel=project.channels[id];Instrument ins=channel.instrument;
             ByteArrayOutputStream t=new ByteArrayOutputStream();byte[] name=ins.title.getBytes(StandardCharsets.UTF_8);
             t.write(0);t.write(255);t.write(3);vlq(t,name.length);t.write(name);t.write(0);t.write(192+ins.channel);t.write(ins.program);
@@ -37,7 +37,7 @@ public final class Exports {
     }
     public static float[] mix(AudioProject project,boolean[] selected,float[] gains,boolean synthesized) {
         float[] result=new float[project.length];
-        for(int id=0;id<8;id++)if(selected[id]&&gains[id]>0){float[] audio=synthesized?synthesize(project.channels[id],project.length):project.channels[id].audio;for(int i=0;i<result.length;i++)result[i]+=audio[i]*gains[id];}
+        for(int id=0;id<Instrument.COUNT;id++)if(selected[id]&&gains[id]>0){float[] audio=synthesized?synthesize(project.channels[id],project.length):project.channels[id].audio;for(int i=0;i<Math.min(result.length,audio.length);i++)result[i]+=audio[i]*gains[id];}
         float peak=0;for(float sample:result)peak=Math.max(peak,Math.abs(sample));if(peak>.95f)for(int i=0;i<result.length;i++)result[i]*=.95f/peak;return result;
     }
     private static float[] synthesize(AudioProject.Channel channel,int length){float[] result=new float[length];int id=channel.instrument.ordinal();for(AudioProject.Note note:channel.notes){int start=(int)(note.start*AudioProject.SAMPLE_RATE),count=(int)(note.duration*AudioProject.SAMPLE_RATE);double frequency=440*Math.pow(2,(note.pitch-69)/12.0);long random=note.pitch+start;for(int j=0;j<count&&start+j<length;j++){double t=j/(double)AudioProject.SAMPLE_RATE,envelope=Math.min(1,t/.012)*Math.min(1,(count-j)/(.04*AudioProject.SAMPLE_RATE)),sample;if(id==3){envelope*=Math.exp(-t*20);random=random*1664525+1013904223;sample=note.pitch==36?Math.sin(2*Math.PI*(80*t-40*t*t)):((random>>>16&65535)/32768.0-1)*.7;}else{sample=Math.sin(2*Math.PI*frequency*t);if(id==1||id==5)envelope*=Math.exp(-t*(id==1?4:2));if(id==2||id==7)sample+=Math.sin(4*Math.PI*frequency*t)*.3+Math.sin(6*Math.PI*frequency*t)*.15;if(id==0||id==6)sample+=Math.sin(4*Math.PI*frequency*t)*.15;}result[start+j]+=sample*envelope*(note.velocity/127.0)*.16;}}return result;}
@@ -50,10 +50,10 @@ public final class Exports {
         boolean any=false;for(boolean s:selected)any|=s;if(!any)throw new IllegalArgumentException("채널을 선택해주세요.");
         String base=safeName(title);
         try(ZipOutputStream zip=new ZipOutputStream(output,StandardCharsets.UTF_8)) {
-            for(int id=0;id<8;id++)if(selected[id]){boolean[] single=new boolean[8];single[id]=true;Instrument ins=project.channels[id].instrument;zip.putNextEntry(new ZipEntry(String.format(Locale.ROOT,"%s_%s_%02d.mid",base,ins.fileName,ins.channel+1)));zip.write(midi(project,single,gains));zip.closeEntry();}
+            for(int id=0;id<Instrument.COUNT;id++)if(selected[id]){boolean[] single=new boolean[Instrument.COUNT];single[id]=true;Instrument ins=project.channels[id].instrument;zip.putNextEntry(new ZipEntry(String.format(Locale.ROOT,"%s_%s_%02d.mid",base,ins.fileName,ins.channel+1)));zip.write(midi(project,single,gains));zip.closeEntry();}
             zip.putNextEntry(new ZipEntry(base+"_선택채널_멀티트랙.mid"));zip.write(midi(project,selected,gains));zip.closeEntry();
             if(includeWav){zip.putNextEntry(new ZipEntry(base+"_선택채널_믹스.wav"));wav(zip,mix(project,selected,gains,false));zip.closeEntry();}
-            zip.putNextEntry(new ZipEntry(base+"_읽어주세요.txt"));String text="Stemnote Android\n입력: "+project.source+"\n주파수 기반 실험적 추정이며 정확한 악기 분리·채보를 보장하지 않습니다.\nMIDI 480 PPQ, 120 BPM 시간축(원곡 템포 아님), GM 드럼 채널 10.\nWAV: 모노, 22.05kHz, 16bit. 채널 레벨 적용, 필요시 피크 정규화.\n미리듣기 전체 볼륨은 저장에 적용되지 않습니다.\n";zip.write(text.getBytes(StandardCharsets.UTF_8));zip.closeEntry();
+            zip.putNextEntry(new ZipEntry(base+"_읽어주세요.txt"));String text="Stemnote Android\n입력: "+project.source+"\n분석: "+project.analysis+"\nAI 채보는 Basic Pitch 모델로 음표를 추정합니다. 악기 식별·음원 분리·드럼 채보 모델은 아닙니다.\n채널명은 사용자 지정 또는 기존 실험적 분류이며, 음성 제거 여부를 뜻하지 않습니다.\nMIDI 480 PPQ, 120 BPM 시간축(원곡 템포 아님), GM 드럼 채널 10.\nWAV: 모노, 22.05kHz, 16bit. 채널 레벨 적용, 필요시 피크 정규화.\n미리듣기 전체 볼륨은 저장에 적용되지 않습니다.\n";zip.write(text.getBytes(StandardCharsets.UTF_8));zip.closeEntry();
         }
     }
 }

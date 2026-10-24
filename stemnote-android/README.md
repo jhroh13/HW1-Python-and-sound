@@ -1,5 +1,7 @@
 # Stemnote Android
 
+> **2.1 업데이트:** 기본 채보를 기기 내 Basic Pitch 학습 모델로 변경했습니다. 최신 사용법·지원 범위·SDK 빌드는 [AI_ANDROID.md](AI_ANDROID.md)를 보세요. 아래 내용은 2.0 실험적 분석 버전의 기록입니다.
+
 Android SDK로 구현한 **네이티브 앱 개발 프로젝트**입니다. WebView, 웹 프런트엔드, HTTPS 실행 서버, Node.js를 사용하지 않습니다. 기존 웹 프로토타입을 실행하는 래퍼가 아니라 UI, 녹음, 해독, 분석, 재생, 파일 생성을 Java로 옮겼습니다.
 
 GitHub Actions에서 **APK 빌드, Android Lint, 코어 테스트 및 APK v2 서명 검증을 완료했습니다.** 실기기·에뮬레이터 실행은 아직 검증하지 못했습니다. [검증 빌드](https://github.com/jhroh13/HW1-Python-and-sound/actions/runs/39599522329)와 [빌드 기록](BUILD_STATUS.md)을 확인하세요.

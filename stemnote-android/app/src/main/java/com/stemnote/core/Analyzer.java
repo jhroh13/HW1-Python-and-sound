@@ -15,8 +15,9 @@ public final class Analyzer {
 
     public AudioProject analyze(float[] samples,String title,String source,Progress progress) {
         if(samples.length<SR/10||samples.length>SR*AudioProject.MAX_SECONDS)throw new IllegalArgumentException("0.1초~120초 구간을 선택해주세요.");
-        AudioProject.Channel[] channels=new AudioProject.Channel[8];
+        AudioProject.Channel[] channels=new AudioProject.Channel[Instrument.COUNT];
         for(int id=0;id<8;id++)channels[id]=new AudioProject.Channel(Instrument.values()[id],samples.length);
+        channels[Instrument.OTHER.ordinal()]=new AudioProject.Channel(Instrument.OTHER,0);
         double[] window=new double[N],previous=new double[N/2+1],re=new double[N],im=new double[N],r=new double[N],ii=new double[N],mag=new double[N/2+1];
         float[] norm=new float[samples.length];double[][] weights=new double[8][N/2+1],base=new double[8][N/2+1];
         double[][] ranges={{180,2600},{110,3800},{140,6500},{60,10500},{30,240},{65,4200},{450,5500},{900,10000}};

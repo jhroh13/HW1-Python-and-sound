@@ -32,21 +32,22 @@ public final class MainActivity extends Activity {
     private final ExecutorService jobs=Executors.newSingleThreadExecutor();
     private final NativePlayer player=new NativePlayer();
     private AudioProject project;
-    private final boolean[] selected=new boolean[8];private final float[] gains=new float[8];
+    private final boolean[] selected=new boolean[Instrument.COUNT];private final float[] gains=new float[Instrument.COUNT];
     private volatile boolean destroyed;private boolean foreground,busy,capturing,playing,pendingPermission;
     private NativeCapture microphone;
     private LinearLayout content,channelList;
     private TextView state,projectName,projectMeta,captureState,captureTime,pitchLabel,levelLabel,selectionLabel,filePreview;
     private EditText captureName,fileName;
     private Button importButton,startButton,finishButton,cancelButton,selectButton,playButton,exportButton,guideButton;
-    private Spinner sourceSpinner,previewSpinner;
-    private CheckBox includeWav;
+    private Spinner sourceSpinner,previewSpinner,analysisSpinner,targetSpinner;
+    private static final Instrument[] AI_TARGETS={Instrument.OTHER,Instrument.VOICE,Instrument.ACOUSTIC,Instrument.ELECTRIC,Instrument.BASS,Instrument.PIANO,Instrument.WINDS,Instrument.SYNTH};
+    private CheckBox includeWav,addTrack;
     private ProgressBar inputMeter,analysisProgress;
-    private final CheckBox[] checks=new CheckBox[8];private final SeekBar[] gainSliders=new SeekBar[8];
+    private final CheckBox[] checks=new CheckBox[Instrument.COUNT];private final SeekBar[] gainSliders=new SeekBar[Instrument.COUNT];
     private ExportRequest pendingExport;
     private String capturedTitle,capturedSource;
 
-    @Override public void onCreate(Bundle saved){super.onCreate(saved);Arrays.fill(gains,.8f);buildScreen();sync();}
+    @Override public void onCreate(Bundle saved){super.onCreate(saved);Arrays.fill(gains,1f);buildScreen();sync();}
     @Override protected void onResume(){super.onResume();foreground=true;}
     @Override protected void onStop(){foreground=false;stopPlayer();if(capturing){captureState.setText("화면을 벗어나 캡처를 완료합니다.");microphone.finish(false);}super.onStop();}
     @Override protected void onDestroy(){destroyed=true;if(microphone!=null)microphone.finish(true);player.stop();jobs.shutdownNow();super.onDestroy();}
@@ -68,7 +69,7 @@ public final class MainActivity extends Activity {
         TextView brand=text("≋  stemnote",28,LIME);brand.setTypeface(null,Typeface.BOLD);content.addView(brand);space(content,8);
         content.addView(text("ANDROID NATIVE  /  AUDIO → MIDI",10,MUTED));space(content,20);
         content.addView(text("한 곡에서, 새로운 가능성으로.",22,TEXT));space(content,8);
-        content.addView(text("음악 파일이나 마이크 구간을 악기별로 탐색하세요.",12,MUTED));space(content,20);
+        content.addView(text("기기 안에서 AI로 음표를 추출하고 MIDI로 저장하세요.",12,MUTED));space(content,20);
         LinearLayout upload=card();upload.addView(text("음악 파일 가져오기",16,TEXT));space(upload,8);upload.addView(text("MP3 · WAV · M4A · OGG · FLAC (기기 코덱에 따라 다름)\n최대 120초. 파일은 기기 안에서 처리합니다.",11,MUTED));space(upload,10);
         importButton=button("음악 파일 선택",false);upload.addView(importButton);importButton.setOnClickListener(v->pickAudio());
         LinearLayout capture=card();capture.addView(text("● 마이크로 음악 캡처",16,LIME));space(capture,8);capture.addView(text("다른 휴대폰은 스피커로 재생하거나, 직접 연주해주세요. 같은 기기의 다른 앱 내부 오디오를 직접 녹음하지 않습니다.",11,MUTED));space(capture,12);
@@ -79,24 +80,33 @@ public final class MainActivity extends Activity {
         captureTime=text("0:00 / 2:00",19,TEXT);capture.addView(captureTime);captureState=text("마이크 준비됨",12,LIME);capture.addView(captureState);space(capture,10);
         inputMeter=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);inputMeter.setMax(100);inputMeter.setProgressTintList(ColorStateList.valueOf(LIME));capture.addView(inputMeter,new LinearLayout.LayoutParams(-1,dp(9)));
         levelLabel=text("입력 대기",11,MUTED);pitchLabel=text("대표 음높이 —",11,MUTED);capture.addView(levelLabel);capture.addView(pitchLabel);space(capture,10);
-        capture.addView(text("캡처 중에는 입력 레벨과 대표 음높이를 추정합니다. 완료 후 악기별 분석을 진행합니다. 최대 120초 자동 완료. 화면을 떠나면 캡처가 완료됩니다.",10,MUTED));
-        LinearLayout warning=card();warning.addView(text("ⓘ 실험적 로컬 분석",13,LIME));warning.addView(text("주파수 기반 추정입니다. 보이스·기타처럼 음역이 겹치는 악기를 정확히 분리하거나 채보하지 못할 수 있습니다. 학습된 AI 분리 모델은 포함되지 않습니다.",11,MUTED));
+        capture.addView(text("캡처 중에는 입력 레벨과 대표 음높이를 추정합니다. 완료 후 선택한 방식으로 채보합니다. 최대 120초 자동 완료. 화면을 떠나면 캡처가 완료됩니다.",10,MUTED));
+        LinearLayout analysis=card();analysis.addView(text("분석 방식",16,LIME));
+        analysisSpinner=spinner(new String[]{"AI 음표 채보 · 악기 직접 지정 (권장)","기존 8채널 자동 추정 · 실험적"});analysis.addView(analysisSpinner);
+        analysis.addView(text("AI는 음표를 추출합니다. 자동 악기 분리·보컬 제거·드럼 채보 기능은 포함하지 않습니다. 혼합곡은 미분류 반주로 두세요.",11,MUTED));space(analysis,12);
+        analysis.addView(text("입력 트랙의 악기 / MIDI 음색",12,TEXT));String[] targets=new String[AI_TARGETS.length];for(int i=0;i<targets.length;i++)targets[i]=AI_TARGETS[i].title;
+        targetSpinner=spinner(targets);analysis.addView(targetSpinner);
+        addTrack=new CheckBox(this);addTrack.setText("기존 AI 프로젝트에 트랙 추가/교체 · 0초 정렬");addTrack.setTextColor(TEXT);addTrack.setTextSize(11);analysis.addView(addTrack);
+        analysis.addView(text("분리된 악기 파일은 악기를 지정해 한 파일씩 추가하세요. 같은 악기 트랙은 교체됩니다. 추가 파일은 동일한 곡·시작 위치여야 합니다. 전체 믹스에 악기 이름만 지정해도 그 악기만 분리되지는 않습니다.",10,MUTED));space(analysis,10);
+        analysis.addView(text("기존 자동 추정 모드는 주파수 마스크를 사용하는 실험 기능이며 오분류가 많습니다. AI 분석 실패 시 자동으로 전환하지 않습니다.",10,MUTED));
         LinearLayout tracks=card();projectName=text("프로젝트를 시작하세요",18,TEXT);tracks.addView(projectName);projectMeta=text("파일을 선택하거나 마이크를 캡처해주세요.",11,MUTED);tracks.addView(projectMeta);space(tracks,10);
         state=text("준비됨",12,LIME);tracks.addView(state);analysisProgress=new ProgressBar(this,null,android.R.attr.progressBarStyleHorizontal);analysisProgress.setMax(100);analysisProgress.setVisibility(View.GONE);tracks.addView(analysisProgress);space(tracks,10);
-        LinearLayout heading=row();heading.addView(text("악기 채널",15,TEXT),new LinearLayout.LayoutParams(0,-2,1));selectButton=button("전체 선택",false);heading.addView(selectButton);selectButton.setOnClickListener(v->{boolean all=selectedCount()==8;Arrays.fill(selected,!all);stopPlayer();renderChannels();sync();});tracks.addView(heading);
+        LinearLayout heading=row();heading.addView(text("악기 채널",15,TEXT),new LinearLayout.LayoutParams(0,-2,1));selectButton=button("전체 선택",false);heading.addView(selectButton);selectButton.setOnClickListener(v->{boolean all=selectedCount()==Instrument.COUNT;Arrays.fill(selected,!all);stopPlayer();renderChannels();sync();});tracks.addView(heading);
         channelList=vertical();tracks.addView(channelList);renderChannels();space(tracks,12);
-        selectionLabel=text("0 / 8 채널 선택",12,LIME);tracks.addView(selectionLabel);previewSpinner=spinner(new String[]{"선택 채널 오디오 믹스","선택 채널 MIDI 합성음"});tracks.addView(previewSpinner);
+        selectionLabel=text("0 / "+Instrument.COUNT+" 채널 선택",12,LIME);tracks.addView(selectionLabel);previewSpinner=spinner(new String[]{"선택 트랙 원음 믹스","선택 채널 MIDI 합성음"});tracks.addView(previewSpinner);
         previewSpinner.setOnItemSelectedListener(new android.widget.AdapterView.OnItemSelectedListener(){public void onItemSelected(android.widget.AdapterView<?> p,View v,int i,long id){stopPlayer();}public void onNothingSelected(android.widget.AdapterView<?> p){}});
         playButton=button("▶ 선택 채널 미리듣기",true);tracks.addView(playButton);playButton.setOnClickListener(v->preview());space(tracks,8);tracks.addView(text("미리듣기 전체 볼륨 (저장에는 적용하지 않음)",10,MUTED));
         SeekBar master=new SeekBar(this);master.setMax(100);master.setProgress(75);master.setOnSeekBarChangeListener(new SeekBar.OnSeekBarChangeListener(){public void onProgressChanged(SeekBar s,int p,boolean from){player.volume(p/100f);}public void onStartTrackingTouch(SeekBar s){}public void onStopTrackingTouch(SeekBar s){}});tracks.addView(master);
         LinearLayout export=card();export.addView(text("내보내기",17,TEXT));space(export,10);fileName=input("저장할 곡 제목");export.addView(fileName);filePreview=text("원곡제목_악기이름_CH.mid",10,MUTED);export.addView(filePreview);fileName.addTextChangedListener(new android.text.TextWatcher(){public void beforeTextChanged(CharSequence s,int a,int c,int f){}public void onTextChanged(CharSequence s,int a,int b,int c){updateFilePreview();}public void afterTextChanged(android.text.Editable e){}});space(export,12);
-        includeWav=new CheckBox(this);includeWav.setText("WAV도 함께 저장 · 선택 채널 믹스");includeWav.setTextColor(TEXT);includeWav.setTextSize(12);export.addView(includeWav);export.addView(text("악기별 MIDI + 멀티트랙 MIDI를 ZIP으로 저장합니다. WAV: 모노 22.05kHz / 16bit.",11,MUTED));space(export,12);
+        includeWav=new CheckBox(this);includeWav.setText("WAV도 함께 저장 · 선택 채널 믹스");includeWav.setTextColor(TEXT);includeWav.setTextSize(12);export.addView(includeWav);export.addView(text("선택 채널별 MIDI + 멀티트랙 MIDI를 ZIP으로 저장합니다. WAV는 입력 트랙의 원음 믹스이며 보컬이 자동 제거되지 않습니다. 모노 22.05kHz / 16bit.",11,MUTED));space(export,12);
         exportButton=button("↓ 선택 채널 내보내기",true);export.addView(exportButton);exportButton.setOnClickListener(v->chooseExport());
-        guideButton=button("사용 가이드",false);content.addView(guideButton);guideButton.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Stemnote 사용법").setMessage("1. 음악 파일을 고르거나 마이크 캡처를 시작합니다.\n2. 원하는 지점에서 캡처 완료를 누릅니다.\n3. 분석 후 채널을 선택하고 레벨을 조절합니다.\n4. 오디오 믹스 또는 MIDI 합성음으로 들어봅니다.\n5. 저장 이름과 WAV 옵션을 정하고 ZIP 저장 위치를 고릅니다.\n\n녹음에는 마이크 권한만 필요합니다. HTTPS나 웹 브라우저는 필요하지 않습니다. 모든 분석은 기기에서 처리합니다.\n\n분석은 실험적 주파수 추정입니다. MIDI 120 BPM은 시간 저장용이며 원곡 템포 감지가 아닙니다. 드럼은 GM 채널 10입니다.\n\n프로젝트는 메모리에만 유지됩니다. 앱 종료 전 ZIP으로 저장해주세요.").setPositiveButton("확인",null).show());space(content,16);content.addView(text("STEMNOTE  /  기기 내 처리 · 음원 업로드 없음",10,MUTED));
+        guideButton=button("사용 가이드",false);content.addView(guideButton);guideButton.setOnClickListener(v->new AlertDialog.Builder(this).setTitle("Stemnote 사용법").setMessage("1. 음악 파일을 고르거나 마이크 캡처를 시작합니다.\n2. 원하는 지점에서 캡처 완료를 누릅니다.\n3. 분석 후 채널을 선택하고 레벨을 조절합니다.\n4. 오디오 믹스 또는 MIDI 합성음으로 들어봅니다.\n5. 저장 이름과 WAV 옵션을 정하고 ZIP 저장 위치를 고릅니다.\n\n녹음에는 마이크 권한만 필요합니다. HTTPS나 웹 브라우저는 필요하지 않습니다. 모든 분석은 기기에서 처리합니다.\n\n기본 AI 채보는 Basic Pitch 학습 모델을 기기에서 실행합니다. 악기를 자동 분리하지 않으며 드럼 채보는 지원하지 않습니다. 악기 이름은 사용자가 지정합니다. 분리된 파일은 트랙 추가로 구성할 수 있습니다. MIDI 120 BPM은 시간 저장용이며 원곡 템포 감지가 아닙니다. 드럼은 GM 채널 10입니다.\n\n프로젝트는 메모리에만 유지됩니다. 앱 종료 전 ZIP으로 저장해주세요.").setPositiveButton("확인",null).show());space(content,16);content.addView(text("STEMNOTE  /  Basic Pitch · Apache 2.0 · 기기 내 분석",10,MUTED));
+        Button licenses=button("오픈소스 라이선스",false);content.addView(licenses);licenses.setOnClickListener(v->{try(java.io.InputStream input=getAssets().open("BASIC_PITCH_LICENSE.txt");java.io.ByteArrayOutputStream out=new java.io.ByteArrayOutputStream()){byte[] b=new byte[4096];int n;while((n=input.read(b))!=-1)out.write(b,0,n);new AlertDialog.Builder(this).setTitle("Basic Pitch · Copyright Spotify AB").setMessage(out.toString("UTF-8")).setPositiveButton("확인",null).show();}catch(java.io.IOException e){message(e.getMessage());}});
+        analysisSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener(){public void onItemSelected(AdapterView<?> p,View v,int i,long id){if(i!=0)addTrack.setChecked(false);sync();}public void onNothingSelected(AdapterView<?> p){}});
     }
     private void renderChannels(){
         channelList.removeAllViews();
-        for(int index=0;index<8;index++){final int id=index;Instrument ins=Instrument.values()[id];LinearLayout item=vertical();item.setPadding(0,dp(12),0,dp(8));
+        for(int index=0;index<Instrument.COUNT;index++){final int id=index;Instrument ins=Instrument.values()[id];LinearLayout item=vertical();item.setPadding(0,dp(12),0,dp(8));
             CheckBox check=new CheckBox(this);checks[id]=check;check.setText(ins.title+"  ·  CH "+String.format(Locale.ROOT,"%02d",ins.channel+1));check.setTextColor(ins.color);check.setTextSize(14);check.setChecked(selected[id]);item.addView(check);
             TextView count=text(project==null?"아직 분석되지 않음":project.channels[id].notes.size()+" NOTES",10,MUTED);item.addView(count);
             WaveView wave=null;if(project!=null){wave=new WaveView(this,project.channels[id].audio,ins.color,selected[id]);item.addView(wave,new LinearLayout.LayoutParams(-1,dp(34)));}final WaveView waveView=wave;
@@ -107,11 +117,11 @@ public final class MainActivity extends Activity {
         }
     }
     private int selectedCount(){int n=0;for(boolean s:selected)if(s)n++;return n;}
-    private void updateFilePreview(){if(filePreview==null||fileName==null)return;int first=-1;for(int i=0;i<8;i++)if(selected[i]){first=i;break;}if(first<0){filePreview.setText("채널을 선택해주세요.");return;}Instrument ins=Instrument.values()[first];filePreview.setText(Exports.safeName(fileName.getText().toString())+"_"+ins.fileName+"_"+String.format(Locale.ROOT,"%02d",ins.channel+1)+".mid");}
+    private void updateFilePreview(){if(filePreview==null||fileName==null)return;int first=-1;for(int i=0;i<Instrument.COUNT;i++)if(selected[i]){first=i;break;}if(first<0){filePreview.setText("채널을 선택해주세요.");return;}Instrument ins=Instrument.values()[first];filePreview.setText(Exports.safeName(fileName.getText().toString())+"_"+ins.fileName+"_"+String.format(Locale.ROOT,"%02d",ins.channel+1)+".mid");}
     private void sync(){
-        boolean locked=busy||capturing;importButton.setEnabled(!locked);startButton.setEnabled(!locked);finishButton.setEnabled(capturing);cancelButton.setEnabled(capturing);captureName.setEnabled(!locked);sourceSpinner.setEnabled(!locked);selectButton.setEnabled(!locked&&project!=null);fileName.setEnabled(!locked&&project!=null);includeWav.setEnabled(!locked);previewSpinner.setEnabled(!locked);
-        for(int i=0;i<8;i++){if(checks[i]!=null)checks[i].setEnabled(!locked&&project!=null);if(gainSliders[i]!=null)gainSliders[i].setEnabled(!locked&&project!=null);}
-        playButton.setEnabled(!locked&&selectedCount()>0&&project!=null);exportButton.setEnabled(!locked&&selectedCount()>0&&project!=null);selectionLabel.setText(selectedCount()+" / 8 채널 선택");selectButton.setText(selectedCount()==8?"전체 해제":"전체 선택");analysisProgress.setVisibility(busy?View.VISIBLE:View.GONE);updateFilePreview();
+        boolean locked=busy||capturing;analysisSpinner.setEnabled(!locked);targetSpinner.setEnabled(!locked&&analysisSpinner.getSelectedItemPosition()==0);addTrack.setEnabled(!locked&&analysisSpinner.getSelectedItemPosition()==0&&project!=null&&!project.analysis.startsWith("주파수"));importButton.setEnabled(!locked);startButton.setEnabled(!locked);finishButton.setEnabled(capturing);cancelButton.setEnabled(capturing);captureName.setEnabled(!locked);sourceSpinner.setEnabled(!locked);selectButton.setEnabled(!locked&&project!=null);fileName.setEnabled(!locked&&project!=null);includeWav.setEnabled(!locked);previewSpinner.setEnabled(!locked);
+        for(int i=0;i<Instrument.COUNT;i++){if(checks[i]!=null)checks[i].setEnabled(!locked&&project!=null);if(gainSliders[i]!=null)gainSliders[i].setEnabled(!locked&&project!=null);}
+        playButton.setEnabled(!locked&&selectedCount()>0&&project!=null);exportButton.setEnabled(!locked&&selectedCount()>0&&project!=null);selectionLabel.setText(selectedCount()+" / "+Instrument.COUNT+" 채널 선택");selectButton.setText(selectedCount()==Instrument.COUNT?"전체 해제":"전체 선택");analysisProgress.setVisibility(busy?View.VISIBLE:View.GONE);updateFilePreview();
     }
     private void requestMicrophone(){if(busy||capturing)return;if(checkSelfPermission(Manifest.permission.RECORD_AUDIO)!=PackageManager.PERMISSION_GRANTED){pendingPermission=true;requestPermissions(new String[]{Manifest.permission.RECORD_AUDIO},MIC_PERMISSION);}else startCapture();}
     @Override public void onRequestPermissionsResult(int request,String[] permissions,int[] results){super.onRequestPermissionsResult(request,permissions,results);if(request==MIC_PERMISSION&&pendingPermission){pendingPermission=false;if(results.length>0&&results[0]==PackageManager.PERMISSION_GRANTED&&foreground)startCapture();else{captureState.setText("마이크 권한을 허용해주세요.");new AlertDialog.Builder(this).setMessage("캡처에는 마이크 권한이 필요합니다. 권한 요청이 표시되지 않으면 설정 → 앱 → Stemnote → 권한에서 마이크를 허용해주세요.").setPositiveButton("확인",null).show();}}}
@@ -128,15 +138,33 @@ public final class MainActivity extends Activity {
     private String displayName(Uri uri){try(Cursor c=getContentResolver().query(uri,new String[]{OpenableColumns.DISPLAY_NAME},null,null,null)){if(c!=null&&c.moveToFirst())return c.getString(0).replaceFirst("\\.[^.]+$","");}catch(Exception ignored){}return "음악";}
     interface AudioInput {float[] read()throws Exception;}
     private void analyze(AudioInput input,String title,String source){
-        if(busy)return;busy=true;stopPlayer();state.setText("음악을 읽고 분석하는 중");analysisProgress.setProgress(0);sync();
-        jobs.execute(()->{try{float[] samples=input.read();AudioProject result=new Analyzer().analyze(samples,title,source,p->ui(()->{state.setText("악기·음표 추정 중 "+p+"%");analysisProgress.setProgress(p);}));ui(()->{project=result;Arrays.fill(selected,true);Arrays.fill(gains,.8f);fileName.setText(result.title);projectName.setText(result.title);projectMeta.setText(clock(result.length/(double)AudioProject.SAMPLE_RATE)+" · 모노 22.05kHz · "+result.source);state.setText("분석 완료 · 주파수 기반 추정");if(source.contains("마이크"))captureState.setText("캡처 분석 완료 · MIDI 저장 가능");busy=false;renderChannels();sync();});}
-            catch(Exception e){ui(()->{busy=false;state.setText("분석 실패 · 기존 프로젝트 유지");if(source.contains("마이크"))captureState.setText("캡처 분석 실패 · 마이크 해제됨");sync();message(e.getMessage());});}
-            catch(OutOfMemoryError e){ui(()->{busy=false;state.setText("메모리 부족");sync();message("메모리가 부족합니다. 더 짧은 구간으로 다시 시도해주세요.");});}});
+        if(busy)return;
+        final boolean ai=analysisSpinner.getSelectedItemPosition()==0;
+        final Instrument target=AI_TARGETS[targetSpinner.getSelectedItemPosition()];
+        final AudioProject previous=ai&&addTrack.isChecked()&&addTrack.isEnabled()?project:null;
+        busy=true;stopPlayer();state.setText("음악을 읽고 분석하는 중");analysisProgress.setProgress(0);sync();
+        jobs.execute(()->{try{
+            float[] samples=input.read();
+            Analyzer.Progress progress=p->ui(()->{state.setText((ai?"AI 음표 채보 중 ":"실험적 악기·음표 추정 중 ")+p+"%");analysisProgress.setProgress(p);});
+            AudioProject analyzed=ai?new BasicPitchTranscriber().analyze(this,samples,title,source,target,progress):new Analyzer().analyze(samples,title,source,progress);
+            AudioProject result=previous==null?analyzed:AudioProject.replaceTrack(previous,analyzed,target);
+            ui(()->{
+                project=result;for(int i=0;i<selected.length;i++)selected[i]=result.channels[i].audio.length>0||!result.channels[i].notes.isEmpty();
+                Arrays.fill(gains,1f);fileName.setText(result.title);projectName.setText(result.title);
+                projectMeta.setText(clock(result.length/(double)AudioProject.SAMPLE_RATE)+" · 모노 22.05kHz · "+result.source);
+                int notes=0;for(AudioProject.Channel channel:result.channels)notes+=channel.notes.size();
+                state.setText(result.analysis+(notes==0?" · 검출된 음표 없음":" · "+notes+"음표"));
+                if(source.contains("마이크"))captureState.setText("캡처 분석 완료 · MIDI 저장 가능");
+                busy=false;renderChannels();sync();
+            });
+        }catch(Exception e){ui(()->{busy=false;state.setText("분석 실패 · 기존 프로젝트 유지");if(source.contains("마이크"))captureState.setText("캡처 분석 실패 · 마이크 해제됨");sync();message(e.getMessage());});}
+        catch(LinkageError e){ui(()->{busy=false;state.setText("AI 런타임을 불러올 수 없음");sync();message("이 APK는 ARM64 기기용입니다. 기기 CPU와 설치 파일을 확인해주세요.");});}
+        catch(OutOfMemoryError e){ui(()->{busy=false;state.setText("메모리 부족");sync();message("메모리가 부족합니다. 더 짧은 구간으로 다시 시도해주세요.");});}});
     }
     private void preview(){
         if(playing){stopPlayer();return;}if(project==null||busy||capturing||selectedCount()==0)return;
         busy=true;stopPlayer();state.setText("선택 채널 믹스를 준비하는 중");sync();AudioProject snapshot=project;boolean[] chosen=selected.clone();float[] volumes=gains.clone();boolean midi=previewSpinner.getSelectedItemPosition()==1;
-        jobs.execute(()->{try{float[] mix=Exports.mix(snapshot,chosen,volumes,midi);ui(()->{busy=false;state.setText("분석 완료 · 주파수 기반 추정");sync();if(!foreground)return;playing=true;playButton.setText("■ 미리듣기 정지");player.play(mix,()->ui(this::stopPlayer),error->ui(()->message(error)));});}catch(OutOfMemoryError e){ui(()->{busy=false;sync();message("재생 메모리가 부족합니다.");});}});
+        jobs.execute(()->{try{float[] mix=Exports.mix(snapshot,chosen,volumes,midi);ui(()->{busy=false;state.setText(project.analysis);sync();if(!foreground)return;playing=true;playButton.setText("■ 미리듣기 정지");player.play(mix,()->ui(this::stopPlayer),error->ui(()->message(error)));});}catch(OutOfMemoryError e){ui(()->{busy=false;sync();message("재생 메모리가 부족합니다.");});}});
     }
     private void stopPlayer(){player.stop();playing=false;if(playButton!=null)playButton.setText("▶ 선택 채널 미리듣기");}
     private static final class ExportRequest {AudioProject project;boolean[] selected;float[] gains;String name;boolean wav;}
