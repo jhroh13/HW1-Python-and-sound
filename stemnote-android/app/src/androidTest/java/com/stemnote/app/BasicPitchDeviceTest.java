@@ -1,22 +1,26 @@
 package com.stemnote.app;
 
-import android.test.InstrumentationTestCase;
+import androidx.test.ext.junit.runners.AndroidJUnit4;
+import androidx.test.platform.app.InstrumentationRegistry;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import static org.junit.Assert.*;
 import com.stemnote.core.*;
 import java.util.List;
 
 /** Runs the packaged TFLite model through the same Java pipeline as the real app. */
-@SuppressWarnings("deprecation")
-public final class BasicPitchDeviceTest extends InstrumentationTestCase {
-    public void testNativeScreenStarts()throws Exception {
-        android.content.Context context=getInstrumentation().getTargetContext();
+@RunWith(AndroidJUnit4.class)
+public final class BasicPitchDeviceTest {
+    @Test public void testNativeScreenStarts()throws Exception {
+        android.content.Context context=InstrumentationRegistry.getInstrumentation().getTargetContext();
         android.content.Intent intent=new android.content.Intent(context,MainActivity.class);
         intent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
-        android.app.Activity activity=getInstrumentation().startActivitySync(intent);
-        getInstrumentation().waitForIdleSync();assertNotNull(activity);
-        getInstrumentation().runOnMainSync(activity::finish);
+        android.app.Activity activity=InstrumentationRegistry.getInstrumentation().startActivitySync(intent);
+        InstrumentationRegistry.getInstrumentation().waitForIdleSync();assertNotNull(activity);
+        InstrumentationRegistry.getInstrumentation().runOnMainSync(activity::finish);
     }
     private AudioProject transcribe(float[] audio)throws Exception {
-        return new BasicPitchTranscriber().analyze(getInstrumentation().getTargetContext(),audio,"test","generated test",Instrument.OTHER,p->{});
+        return new BasicPitchTranscriber().analyze(InstrumentationRegistry.getInstrumentation().getTargetContext(),audio,"test","generated test",Instrument.OTHER,p->{});
     }
     private static float[] pluck(int pitch,double start,double duration,double level,int seconds) {
         float[] audio=new float[seconds*22050];double frequency=440*Math.pow(2,(pitch-69)/12.0);
@@ -27,11 +31,11 @@ public final class BasicPitchDeviceTest extends InstrumentationTestCase {
         }
         return audio;
     }
-    public void testSilence()throws Exception {
+    @Test public void testSilence()throws Exception {
         AudioProject p=transcribe(new float[3*22050]);
         for(AudioProject.Channel c:p.channels)assertTrue("silence must not produce MIDI notes",c.notes.isEmpty());
     }
-    public void testKnownNoteAndWindowSeam()throws Exception {
+    @Test public void testKnownNoteAndWindowSeam()throws Exception {
         // The note crosses the first retained-window boundary (~1.65s).
         AudioProject p=transcribe(pluck(69,.45,2.1,.3,4));
         List<AudioProject.Note> notes=p.channels[Instrument.OTHER.ordinal()].notes;
@@ -40,7 +44,7 @@ public final class BasicPitchDeviceTest extends InstrumentationTestCase {
         assertTrue("no fabricated drum notes",p.channels[Instrument.DRUMS.ordinal()].notes.isEmpty());
         for(AudioProject.Note n:notes)assertTrue("note bounds",n.start>=0&&n.start+n.duration<=4);
     }
-    public void testChord()throws Exception {
+    @Test public void testChord()throws Exception {
         float[] audio=pluck(60,.3,1.3,.12,3);
         for(int pitch:new int[]{64,67}){float[] part=pluck(pitch,.3,1.3,.12,3);for(int i=0;i<audio.length;i++)audio[i]+=part[i];}
         List<AudioProject.Note> notes=transcribe(audio).channels[Instrument.OTHER.ordinal()].notes;

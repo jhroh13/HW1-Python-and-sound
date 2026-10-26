@@ -10,7 +10,7 @@ android {
         targetSdk 35
         versionCode 2
         versionName '2.1.0-ondevice-ai'
-        testInstrumentationRunner 'android.test.InstrumentationTestRunner'
+        testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         ndk { abiFilters(project.findProperty('stemnoteAbi') ?: 'arm64-v8a') }
     }
     compileOptions {
@@ -21,7 +21,11 @@ android {
     androidResources { noCompress += 'tflite' }
 }
 
-dependencies { implementation 'org.tensorflow:tensorflow-lite:2.16.1' }
+dependencies {
+    implementation 'org.tensorflow:tensorflow-lite:2.16.1'
+    androidTestImplementation 'androidx.test:runner:1.6.2'
+    androidTestImplementation 'androidx.test.ext:junit:1.2.1'
+}
 
 tasks.register('verifyBasicPitchModel') {
     doLast {

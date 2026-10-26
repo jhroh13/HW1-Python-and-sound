@@ -65,14 +65,14 @@ jobs:
         with:
           name: Stemnote-AI-test-results
           path: |
-            app/build/reports/androidTests
-            app/build/outputs/androidTest-results
-            app/build/reports/lint-results-debug.html
+            stemnote-android/app/build/reports/androidTests
+            stemnote-android/app/build/outputs/androidTest-results
+            stemnote-android/app/build/reports/lint-results-debug.html
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
           name: Stemnote-Android-AI-arm64
-          path: out/apk/Stemnote-Android-AI-arm64.apk
+          path: stemnote-android/out/apk/Stemnote-Android-AI-arm64.apk
           if-no-files-found: error
           retention-days: 14
       - name: Transfer verified APK
