@@ -1,3 +1,5 @@
+> 2.1 로컬 AI 버전의 기록입니다. 현재 2.2 ZeroGPU 구성과 지원 범위는 [ZEROGPU.md](ZEROGPU.md)를 참고하세요.
+
 # Android 2.1 · 기기 내 AI 채보
 
 Android SDK / Java 네이티브 앱의 기본 분석을 Spotify Basic Pitch 학습 모델 + TensorFlow Lite 2.16.1로 변경했습니다. 모델은 APK에 포함되며 음원을 서버로 보내지 않습니다.
