@@ -49,11 +49,14 @@ public final class Exports {
     public static void archive(OutputStream output,AudioProject project,boolean[] selected,float[] gains,String title,boolean includeWav)throws IOException {
         boolean any=false;for(boolean s:selected)any|=s;if(!any)throw new IllegalArgumentException("채널을 선택해주세요.");
         String base=safeName(title);
+        boolean[] midiSelected=new boolean[Instrument.COUNT];boolean anyMidi=false;
+        for(int id=0;id<Instrument.COUNT;id++){midiSelected[id]=selected[id]&&gains[id]>0&&!project.channels[id].notes.isEmpty();anyMidi|=midiSelected[id];}
+        if(!anyMidi&&!includeWav)throw new IllegalArgumentException("선택한 트랙에 MIDI 음표가 없습니다. WAV 저장을 선택해주세요.");
         try(ZipOutputStream zip=new ZipOutputStream(output,StandardCharsets.UTF_8)) {
-            for(int id=0;id<Instrument.COUNT;id++)if(selected[id]){boolean[] single=new boolean[Instrument.COUNT];single[id]=true;Instrument ins=project.channels[id].instrument;zip.putNextEntry(new ZipEntry(String.format(Locale.ROOT,"%s_%s_%02d.mid",base,ins.fileName,ins.channel+1)));zip.write(midi(project,single,gains));zip.closeEntry();}
-            zip.putNextEntry(new ZipEntry(base+"_선택채널_멀티트랙.mid"));zip.write(midi(project,selected,gains));zip.closeEntry();
+            for(int id=0;id<Instrument.COUNT;id++)if(midiSelected[id]){boolean[] single=new boolean[Instrument.COUNT];single[id]=true;Instrument ins=project.channels[id].instrument;zip.putNextEntry(new ZipEntry(String.format(Locale.ROOT,"%s_%s_%02d.mid",base,ins.fileName,ins.channel+1)));zip.write(midi(project,single,gains));zip.closeEntry();}
+            if(anyMidi){zip.putNextEntry(new ZipEntry(base+"_선택채널_멀티트랙.mid"));zip.write(midi(project,midiSelected,gains));zip.closeEntry();}
             if(includeWav){zip.putNextEntry(new ZipEntry(base+"_선택채널_믹스.wav"));wav(zip,mix(project,selected,gains,false));zip.closeEntry();}
-            zip.putNextEntry(new ZipEntry(base+"_읽어주세요.txt"));String text="Stemnote Android\n입력: "+project.source+"\n분석: "+project.analysis+"\nAI 채보는 Basic Pitch 모델로 음표를 추정합니다. 악기 식별·음원 분리·드럼 채보 모델은 아닙니다.\n채널명은 사용자 지정 또는 기존 실험적 분류이며, 음성 제거 여부를 뜻하지 않습니다.\nMIDI 480 PPQ, 120 BPM 시간축(원곡 템포 아님), GM 드럼 채널 10.\nWAV: 모노, 22.05kHz, 16bit. 채널 레벨 적용, 필요시 피크 정규화.\n미리듣기 전체 볼륨은 저장에 적용되지 않습니다.\n";zip.write(text.getBytes(StandardCharsets.UTF_8));zip.closeEntry();
+            zip.putNextEntry(new ZipEntry(base+"_읽어주세요.txt"));String text="Stemnote Android\n입력: "+project.source+"\n분석: "+project.analysis+"\nAI 채보는 Basic Pitch 모델로 음표를 추정합니다. 음원 분리는 분석 정보에 표시된 서버 모델을 사용합니다. 드럼 AI 채보는 지원하지 않습니다.\nZeroGPU 분리 시 보컬 채널을 제외하면 나머지 트랙만 믹스됩니다. 분리 잔여음이 남을 수 있습니다.\n로컬 모드의 채널명은 직접 지정 또는 실험적 추정입니다.\nMIDI 음표가 없는 트랙은 MIDI 파일을 만들지 않습니다.\nMIDI 480 PPQ, 120 BPM 시간축(원곡 템포 아님), GM 드럼 채널 10.\nWAV: 모노, 22.05kHz, 16bit. 채널 레벨 적용, 필요시 피크 정규화.\n미리듣기 전체 볼륨은 저장에 적용되지 않습니다.\n";zip.write(text.getBytes(StandardCharsets.UTF_8));zip.closeEntry();
         }
     }
 }

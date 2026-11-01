@@ -72,8 +72,14 @@ with zipfile.ZipFile(apk) as archive:
     assert application['debuggable'] != 0
     permissions = [attrs['name'] for name, attrs in tags if name == 'uses-permission']
     assert 'android.permission.RECORD_AUDIO' in permissions
-    assert 'android.permission.INTERNET' not in permissions
+    assert 'android.permission.INTERNET' in permissions
+    model = archive.read('assets/basic_pitch.tflite')
+    assert model[4:8] == b'TFL3' and len(model) == 204448
+    assert hashlib.sha1(f'blob {len(model)}\0'.encode() + model).hexdigest() == '85a41befdd036e9b365a052b7c704c6810288b95'
+    assert 'assets/BASIC_PITCH_LICENSE.txt' in archive.namelist()
+    native = [name for name in archive.namelist() if name.startswith('lib/') and name.endswith('.so')]
+    assert any('arm64-v8a' in name and 'tensorflowlite' in name for name in native), 'ARM64 TFLite runtime missing'
 eocd = data.rfind(b'PK\x05\x06')
 central = struct.unpack_from('<I', data, eocd + 16)[0]
 assert data[central - 16:central] == b'APK Sig Block 42', 'APK signing block missing'
-print(json.dumps({'file': str(apk), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(), 'package': app['package'], 'version': app['versionName'], 'minSdk': sdk['minSdkVersion'], 'targetSdk': sdk['targetSdkVersion'], 'debug': True, 'permissions': permissions, 'zip_crc': 'pass', 'dex_checksums': 'pass', 'signing_block': 'present'}, ensure_ascii=False, indent=2))
+print(json.dumps({'file': str(apk), 'bytes': len(data), 'sha256': hashlib.sha256(data).hexdigest(), 'package': app['package'], 'version': app['versionName'], 'minSdk': sdk['minSdkVersion'], 'targetSdk': sdk['targetSdkVersion'], 'debug': True, 'permissions': permissions, 'zip_crc': 'pass', 'dex_checksums': 'pass', 'signing_block': 'present', 'bundled_model_sha256': hashlib.sha256(model).hexdigest(), 'native_libraries': native}, ensure_ascii=False, indent=2))

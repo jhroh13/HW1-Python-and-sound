@@ -8,8 +8,8 @@ android {
         applicationId 'com.stemnote.app'
         minSdk 26
         targetSdk 35
-        versionCode 2
-        versionName '2.1.0-ondevice-ai'
+        versionCode 3
+        versionName '2.2.0-zerogpu'
         testInstrumentationRunner 'androidx.test.runner.AndroidJUnitRunner'
         ndk { abiFilters(project.findProperty('stemnoteAbi') ?: 'arm64-v8a') }
     }

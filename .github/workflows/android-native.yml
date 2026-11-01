@@ -1,4 +1,4 @@
-name: Android native AI APK
+name: Android ZeroGPU APK
 on:
   push:
   pull_request:
@@ -6,12 +6,12 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: stemnote-native-ai-${{ github.ref }}
+  group: stemnote-zerogpu-${{ github.ref }}
   cancel-in-progress: true
 jobs:
-  build:
+  android:
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: stemnote-android
@@ -29,29 +29,25 @@ jobs:
         with:
           packages: platform-tools
           log-accepted-android-sdk-licenses: false
-      - name: Install Android SDK
+      - name: Install SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.9'
-      - name: Fetch and verify pinned official model
+      - name: Verify bundled transcription model
         run: python3 tools/fetch_model.py
-      - name: Test analysis and exports
+      - name: Test core formats and transcription
         run: bash tests/run.sh
-      - name: Build and lint ARM64 application
+      - name: Build and lint native ARM64 APK
         run: |
           gradle --no-daemon -PstemnoteAbi=arm64-v8a :app:assembleDebug :app:lintDebug
           mkdir -p out/apk
-          cp app/build/outputs/apk/debug/app-debug.apk out/apk/Stemnote-Android-AI-arm64.apk
-      - name: Verify signed APK and bundled model
-        run: |
-          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs out/apk/Stemnote-Android-AI-arm64.apk
-          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging out/apk/Stemnote-Android-AI-arm64.apk
-          python3 tests/inspect_apk.py out/apk/Stemnote-Android-AI-arm64.apk
+          cp app/build/outputs/apk/debug/app-debug.apk out/apk/Stemnote-ZeroGPU-arm64.apk
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs out/apk/Stemnote-ZeroGPU-arm64.apk
+          python3 tests/inspect_apk.py out/apk/Stemnote-ZeroGPU-arm64.apk
       - name: Enable KVM
-        run: |
-          sudo chmod 666 /dev/kvm
-      - name: Test real TFLite inference and native screen on Android
+        run: sudo chmod 666 /dev/kvm
+      - name: Android real-model and Gradio transport tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
@@ -63,7 +59,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Stemnote-AI-test-results
+          name: Stemnote-ZeroGPU-Android-tests
           path: |
             stemnote-android/app/build/reports/androidTests
             stemnote-android/app/build/outputs/androidTest-results
@@ -71,7 +67,40 @@ jobs:
           if-no-files-found: warn
       - uses: actions/upload-artifact@v4
         with:
-          name: Stemnote-Android-AI-arm64
-          path: stemnote-android/out/apk/Stemnote-Android-AI-arm64.apk
-          if-no-files-found: error
+          name: Stemnote-ZeroGPU-arm64
+          path: stemnote-android/out/apk/Stemnote-ZeroGPU-arm64.apk
           retention-days: 14
+      - name: Transfer APK ZIP when requested
+        if: contains(github.event.head_commit.message, '[transfer-apk]')
+        run: |
+          python3 - <<'PY'
+          import base64, hashlib, pathlib, textwrap, zipfile
+          path = pathlib.Path('out/apk/Stemnote-ZeroGPU-arm64.apk')
+          with zipfile.ZipFile('out/transfer.zip', 'w', zipfile.ZIP_DEFLATED) as z:
+              z.write(path, path.name)
+          print('APK_SHA256', hashlib.sha256(path.read_bytes()).hexdigest())
+          print('STEMNOTE_ZERO_ZIP_BEGIN')
+          print('\n'.join(textwrap.wrap(base64.b64encode(pathlib.Path('out/transfer.zip').read_bytes()).decode(), 120)))
+          print('STEMNOTE_ZERO_ZIP_END')
+          PY
+  separator:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: stemnote-android/zerogpu-space
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install matching CPU runtime for validation
+        run: |
+          pip install torch==2.8.0 torchaudio==2.8.0 --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt gradio==5.49.1
+      - name: Test stem archive contract
+        run: python -m unittest -v test_audio_io.py
+      - name: Actual Demucs and Gradio API smoke test
+        env:
+          STEMNOTE_DEVICE: cpu
+        run: python smoke_test.py
