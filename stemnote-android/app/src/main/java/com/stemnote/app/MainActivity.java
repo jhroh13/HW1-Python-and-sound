@@ -87,7 +87,7 @@ public final class MainActivity extends Activity {
         analysisSpinner=spinner(new String[]{"ZeroGPU 음원 분리 → MIDI / WAV","기기 내 AI 채보 · 악기 직접 지정","기존 8채널 자동 추정 · 실험적"});analysis.addView(analysisSpinner);
         zeroSettings=vertical();analysis.addView(zeroSettings);
         zeroSettings.addView(text("음원은 입력한 Hugging Face Space로 전송됩니다. GPU 대기·사용량 제한이 있으며 인터넷 연결이 필요합니다.",11,MUTED));space(zeroSettings,10);
-        spaceAddress=input("Space 실행 주소 · https://이름-공간.hf.space");spaceAddress.setText(getPreferences(MODE_PRIVATE).getString("space_url",""));zeroSettings.addView(spaceAddress);
+        spaceAddress=input("Space 실행 주소 · https://이름-공간.hf.space");spaceAddress.setText(getPreferences(MODE_PRIVATE).getString("space_url","https://j0ngh0r0h-midigen.hf.space"));zeroSettings.addView(spaceAddress);
         hfToken=input("HF 읽기 토큰 (비공개 Space/할당량 · 선택)");hfToken.setInputType(android.text.InputType.TYPE_CLASS_TEXT|android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD);hfToken.setSaveEnabled(false);hfToken.setImportantForAutofill(View.IMPORTANT_FOR_AUTOFILL_NO);hfToken.setFilters(new android.text.InputFilter[]{new android.text.InputFilter.LengthFilter(256)});zeroSettings.addView(hfToken);
         zeroSettings.addView(text("토큰은 앱을 켜 둔 동안만 유지하며 파일로 저장하지 않습니다.",10,MUTED));
         zeroModelSpinner=spinner(new String[]{"6트랙 · 보컬/드럼/베이스/기타/피아노/나머지","4트랙 · 보컬/드럼/베이스/나머지 (정밀)"});zeroSettings.addView(zeroModelSpinner);

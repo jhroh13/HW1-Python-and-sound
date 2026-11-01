@@ -104,3 +104,38 @@ jobs:
         env:
           STEMNOTE_DEVICE: cpu
         run: python smoke_test.py
+  deploy_midigen:
+    needs: [android, separator]
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: stemnote-android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Clone existing Midigen Space
+        run: git clone --depth 1 https://huggingface.co/spaces/j0ngh0r0h/Midigen "$RUNNER_TEMP/Midigen"
+      - name: Check authorized Hugging Face write authentication
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          if [ -z "$HF_TOKEN" ]; then
+            echo "::error::Add the Hugging Face write token as repository Actions secret HF_TOKEN, then rerun this failed deployment job. The remote Space has not been changed."
+            exit 1
+          fi
+      - name: Convert to Gradio and activate ZeroGPU
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          pip install 'huggingface_hub>=0.35,<2' gradio_client
+          python tools/deploy_zerogpu.py j0ngh0r0h/Midigen --verify
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Midigen-original-source
+          path: ${{ runner.temp }}/Midigen
+          if-no-files-found: warn

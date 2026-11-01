@@ -62,7 +62,7 @@ def separate(audio_file, model_name, progress=gr.Progress()):
 
 
 with gr.Blocks(delete_cache=(600, 3600)) as demo:
-    gr.Markdown("# Stemnote · ZeroGPU music separation\nNative Android client backend. WAV, 0.1–120 seconds.\n"
+    gr.Markdown("# Midigen · ZeroGPU music separation\nNative Android client backend. WAV, 0.1–120 seconds.\n"
                 "6 stems: vocals / drums / bass / guitar (combined) / piano / other.\n"
                 "4 stems: vocals / drums / bass / other. Separation can contain leakage.\n"
                 "Files may remain in this Space's temporary cache for approximately one hour while it is running.")

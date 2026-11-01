@@ -1,5 +1,5 @@
 ---
-title: Stemnote ZeroGPU Separation
+title: Midigen
 emoji: 🎼
 colorFrom: green
 colorTo: blue
@@ -7,6 +7,7 @@ sdk: gradio
 sdk_version: 5.49.1
 python_version: 3.12.12
 app_file: app.py
+short_description: ZeroGPU music separation and native Android MIDI backend
 tags:
   - zerogpu
   - music-source-separation

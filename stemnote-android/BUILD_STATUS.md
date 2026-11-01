@@ -1,19 +1,11 @@
-# Verified APK build
+# Android 2.2 ZeroGPU verification
 
-- Repository: https://github.com/jhroh13/HW1-Python-and-sound
-- Branch: codex/stemnote-android-apk
-- Build commit: 53f5b5d92533a891ce182d7ce8163679e0f22f29
-- Workflow: https://github.com/jhroh13/HW1-Python-and-sound/actions/runs/39599522329
-- Result: success (2026-10-21 UTC)
-- Commands: Gradle :app:assembleDebug :app:lintDebug, bash tests/run.sh
-- APK: app-debug.apk (49,787 bytes)
-- Package: com.stemnote.app
-- Version: 2.0.0-native-preview (versionCode 1)
-- Minimum: Android 8.0 / API 26; target API 35
-- Signing: debug certificate, APK Signature Scheme v2 verified by Android SDK apksigner
-- SHA-256: decaca623cc3b4d36c1292a022329790856febbbc37d9dbd1a63818bcd1c0a5b
-- Only requested permission: android.permission.RECORD_AUDIO
-- ZIP CRC, DEX SHA-1/Adler32, manifest and local transfer SHA-256: passed
-- Physical device and emulator execution: not tested
+Target Space: https://huggingface.co/spaces/j0ngh0r0h/Midigen
 
-GitHub Actions artifacts expire after 14 days. The source and workflow remain in the branch for rebuilding. Debug signing keys generated on different runners may differ; future debug APK updates may require uninstalling the previous preview. No production signing key or Play Store release is provided.
+- Actual Demucs htdemucs_6s and htdemucs_ft models, Gradio upload/queued call/download and 6/4 valid WAV stems passed on CPU in GitHub run 41358941502 (2026-11-01).
+- Core Java tests and syntax checks passed.
+- First Android Lint run found missing includeSubdomains attributes in the loopback test configuration. Those attributes have been corrected; the updated build and emulator checks must be run.
+- Production Space conversion and real ZeroGPU verification require HF_TOKEN with write/Space hardware access. Runtime and normal local HF credential checks found no configured HF credentials.
+- The existing remote Space was observed as public, sdk=static, commit 0a8d9bccb03419bd2b5179c217fcf14784e5a1ab. Prepared code alone does not mean it has changed remotely.
+
+The workflow builds the native ARM64 APK, tests the actual on-device model and Gradio HTTP transport, then deploys the existing Midigen Space using the authorized HF_TOKEN secret. It uploads Gradio metadata/server code, preserves existing static files/visibility, requests ZeroGPU only and validates the deployed API with generated audio. No paid GPU fallback is configured.

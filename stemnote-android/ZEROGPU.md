@@ -38,3 +38,11 @@ Android 계측 테스트는 기기 내 실제 채보 모델, 모의 Gradio 서�
 입력/결과는 Space의 임시 캐시에 약 1시간 남을 수 있습니다. Gradio 캐시 정리는 Space가 실행되는 동안 수행됩니다. 음원을 GitHub에 업로드하지 않습니다. Android 다운로드 ZIP은 이름/샘플 수/체크섬을 검사하고 파일 경로를 디스크에 그대로 풀지 않습니다.
 
 공식 참고: https://huggingface.co/docs/hub/spaces-zerogpu · https://www.gradio.app/guides/querying-gradio-apps-with-curl · https://github.com/facebookresearch/demucs
+
+## Midigen 원격 전환
+
+대상: https://huggingface.co/spaces/j0ngh0r0h/Midigen . 앱의 기본 실행 주소는 `https://j0ngh0r0h-midigen.hf.space`입니다. 정적 Space 상태에서는 API가 동작하지 않으며 서버 전환 후 활성화됩니다.
+
+GitHub 저장소의 Actions 비밀값 `HF_TOKEN`에 대상 Space 쓰기 권한이 있는 Hugging Face 토큰을 등록하면 배포 작업이 README SDK를 Gradio로 바꾸고 서버 파일을 반영한 뒤 ZeroGPU 하드웨어를 요청합니다. 기존 정적 파일과 공개 범위는 유지합니다. 유료 GPU로 전환하지 않습니다.
+
+수동 실행은 `python tools/deploy_zerogpu.py j0ngh0r0h/Midigen --verify`입니다. `--verify`는 서버 시작 후 실제 배포된 4/6트랙 API를 생성음으로 검사합니다. 토큰이 없으면 원격 쓰기를 수행하지 않습니다.
